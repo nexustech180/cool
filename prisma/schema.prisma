@@ -1,0 +1,249 @@
+// Prisma schema for the multi-tenant school management platform.
+// NOTE: SQLite has no native enum type, so role/status fields are plain
+// Strings constrained by TS union types in src/lib/types.ts — this keeps
+// the schema portable to PostgreSQL later without a migration rewrite.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model School {
+  id     String @id @default(cuid())
+  name   String
+  passkey String @unique
+
+  subscriptionStatus String @default("TRIAL")
+  subscriptionPlan   String @default("FREE")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users           User[]
+  classes         Class[]
+  subjects        Subject[]
+  terms           Term[]
+  gradeBoundaries GradeBoundary[]
+  weightageSetting WeightageSetting?
+  students        Student[]
+  teacherAssignments TeacherAssignment[]
+}
+
+model User {
+  id               String  @id @default(cuid())
+  phone            String
+  passwordHash     String
+  name             String
+  role             String // SUPER_ADMIN | SCHOOL_ADMIN | TEACHER | PARENT
+  mustChangePassword Boolean @default(false)
+
+  schoolId String?
+  school   School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  formTeacherOfClasses Class[]              @relation("ClassFormTeacher")
+  teacherAssignments   TeacherAssignment[]
+  childrenAsParent     Student[]            @relation("StudentParent")
+  scoresEntered        Score[]              @relation("ScoreEnteredBy")
+  attendanceRecorded   Attendance[]         @relation("AttendanceRecordedBy")
+  feesRecorded         Fee[]                @relation("FeeRecordedBy")
+
+  @@unique([schoolId, phone])
+}
+
+model Class {
+  id   String @id @default(cuid())
+  name String
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  formTeacherId String?
+  formTeacher   User?   @relation("ClassFormTeacher", fields: [formTeacherId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  students           Student[]
+  teacherAssignments TeacherAssignment[]
+
+  @@unique([schoolId, name])
+}
+
+model Subject {
+  id   String @id @default(cuid())
+  name String
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  teacherAssignments TeacherAssignment[]
+  scores             Score[]
+
+  @@unique([schoolId, name])
+}
+
+// Assigns a teacher to teach one subject in one class.
+model TeacherAssignment {
+  id String @id @default(cuid())
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  classId String
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  teacherId String
+  teacher   User   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([classId, subjectId])
+}
+
+model Term {
+  id        String   @id @default(cuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  totalDays Int // total attendable days in the term, set by School Admin
+  isActive  Boolean  @default(false)
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  scores      Score[]
+  attendances Attendance[]
+  fees        Fee[]
+
+  @@unique([schoolId, name])
+}
+
+// percentage range -> grade -> remark, e.g. 80-100 = A1 = "Excellent"
+model GradeBoundary {
+  id         String @id @default(cuid())
+  minPercent Float
+  maxPercent Float
+  grade      String
+  remark     String
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// one row per school: class score weight %, exam weight is auto-derived as (100 - classScoreWeight)
+model WeightageSetting {
+  id               String @id @default(cuid())
+  classScoreWeight Float  @default(40)
+
+  schoolId String @unique
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  updatedAt DateTime @updatedAt
+}
+
+model Student {
+  id       String @id @default(cuid())
+  fullName String
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  classId String
+  class   Class  @relation(fields: [classId], references: [id])
+
+  parentId String?
+  parent   User?   @relation("StudentParent", fields: [parentId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  scores      Score[]
+  attendances Attendance[]
+  fees        Fee[]
+}
+
+// raw marks entered by a teacher; scaled/grade fields are computed at save time
+// and persisted so historical report cards stay stable if weightage/boundaries change later.
+model Score {
+  id String @id @default(cuid())
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  termId String
+  term   Term   @relation(fields: [termId], references: [id], onDelete: Cascade)
+
+  classScoreRaw Float
+  classScoreMax Float @default(100)
+  examScoreRaw  Float
+  examScoreMax  Float @default(100)
+
+  scaledClassScore Float
+  scaledExamScore  Float
+  totalPercent     Float
+  grade            String
+  remark           String
+
+  teacherId String
+  teacher   User   @relation("ScoreEnteredBy", fields: [teacherId], references: [id])
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, subjectId, termId])
+}
+
+model Attendance {
+  id          String @id @default(cuid())
+  daysPresent Int
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  termId String
+  term   Term   @relation(fields: [termId], references: [id], onDelete: Cascade)
+
+  recordedById String
+  recordedBy   User   @relation("AttendanceRecordedBy", fields: [recordedById], references: [id])
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, termId])
+}
+
+model Fee {
+  id          String   @id @default(cuid())
+  amountDue   Float
+  amountPaid  Float    @default(0)
+  dueDate     DateTime?
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  termId String
+  term   Term   @relation(fields: [termId], references: [id], onDelete: Cascade)
+
+  recordedById String
+  recordedBy   User   @relation("FeeRecordedBy", fields: [recordedById], references: [id])
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, termId])
+}
