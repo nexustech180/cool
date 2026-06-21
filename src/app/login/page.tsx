@@ -37,6 +37,12 @@ export default async function LoginPage({
             Register your school
           </Link>
         </p>
+        <p className="mt-2 text-center text-sm text-slate-500">
+          Parent of a student?{" "}
+          <Link href="/register/parent" className="font-medium text-indigo-600 hover:underline">
+            Register here
+          </Link>
+        </p>
       </div>
     </div>
   );
