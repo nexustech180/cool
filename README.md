@@ -8,17 +8,22 @@ fees — accessed through phone number + school passkey + password login.
 
 - [Next.js](https://nextjs.org) 16 (App Router, Server Actions)
 - [NextAuth](https://authjs.dev) v5 (Credentials provider, JWT sessions)
-- [Prisma](https://www.prisma.io) 7 with SQLite for local dev (swap the
-  datasource to PostgreSQL for production — the schema avoids
-  Postgres-only features on purpose)
+- [Prisma](https://www.prisma.io) 7 with PostgreSQL, via the `@prisma/adapter-pg`
+  driver adapter (no native query engine binary, so it runs cleanly on
+  serverless platforms like Vercel)
 - Tailwind CSS v4
 - TypeScript, react-hook-form + zod
 
 ## Getting started
 
+You'll need a PostgreSQL database — a local install, Docker
+(`docker run -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres`), or a free
+hosted instance (Vercel Postgres, [Neon](https://neon.tech),
+[Supabase](https://supabase.com)).
+
 ```bash
 npm install
-cp .env.example .env   # then set AUTH_SECRET (openssl rand -base64 32)
+cp .env.example .env   # set DATABASE_URL and AUTH_SECRET (openssl rand -base64 32)
 npx prisma migrate dev
 npm run db:seed
 npm run dev
@@ -61,3 +66,17 @@ school at registration time.
 npm run lint      # eslint
 npm run db:reset  # drop, recreate, and re-migrate the dev database
 ```
+
+## Deploying to Vercel
+
+1. Push this repo to GitHub and import it in [Vercel](https://vercel.com/new).
+2. Provision a Postgres database (Vercel Postgres, Neon, or Supabase all work)
+   and copy its connection string.
+3. In the Vercel project's Settings → Environment Variables, set:
+   - `DATABASE_URL` — the Postgres connection string from step 2.
+   - `AUTH_SECRET` — generate with `openssl rand -base64 32`.
+   - `AUTH_TRUST_HOST` — set to `true` (required for auth to work behind
+     any production host/proxy, Vercel included).
+4. Deploy. The build runs `prisma migrate deploy` and the seed script
+   automatically, so the schema and demo logins are ready as soon as the
+   deploy finishes.

@@ -1,7 +1,7 @@
 // Prisma schema for the multi-tenant school management platform.
-// NOTE: SQLite has no native enum type, so role/status fields are plain
-// Strings constrained by TS union types in src/lib/types.ts — this keeps
-// the schema portable to PostgreSQL later without a migration rewrite.
+// NOTE: role/status fields are plain Strings constrained by TS union types
+// in src/lib/types.ts rather than native Postgres enums, since the schema
+// was originally developed against SQLite (which has no enum type).
 
 generator client {
   provider = "prisma-client"
@@ -9,7 +9,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model School {
