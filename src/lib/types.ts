@@ -4,6 +4,20 @@ export type Role = (typeof ROLES)[number];
 export const SUBSCRIPTION_STATUSES = ["TRIAL", "ACTIVE", "SUSPENDED"] as const;
 export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
 
+export const SUBSCRIPTION_INTERVALS = ["MONTHLY", "QUARTERLY", "ANNUALLY"] as const;
+export type SubscriptionInterval = (typeof SUBSCRIPTION_INTERVALS)[number];
+
+export function subscriptionIntervalLabel(interval: SubscriptionInterval): string {
+  switch (interval) {
+    case "MONTHLY":
+      return "Monthly";
+    case "QUARTERLY":
+      return "Quarterly (3 months)";
+    case "ANNUALLY":
+      return "Annually";
+  }
+}
+
 export const SUPER_ADMIN_PASSKEY = "admin";
 
 export function roleLabel(role: Role): string {

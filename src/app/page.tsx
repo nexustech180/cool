@@ -26,17 +26,23 @@ const FEATURES = [
 const PLANS = [
   {
     name: "Free",
-    price: "₦0",
-    period: "/term",
+    price: "₵0",
+    period: "",
     description: "For small schools getting started.",
     features: ["Up to 2 classes", "Up to 50 students", "Core grading & report cards"],
   },
   {
     name: "Pro",
-    price: "₦15,000",
-    period: "/term",
+    price: "₵150",
+    period: "/month",
     description: "For growing schools that need more room.",
-    features: ["Unlimited classes", "Unlimited students", "Attendance & fee tracking", "Priority support"],
+    features: [
+      "Unlimited classes",
+      "Unlimited students",
+      "Attendance & fee tracking",
+      "Priority support",
+      "Billed monthly, quarterly, or annually",
+    ],
     highlighted: true,
   },
   {

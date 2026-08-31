@@ -17,8 +17,16 @@ model School {
   name   String
   passkey String @unique
 
-  subscriptionStatus String @default("TRIAL")
-  subscriptionPlan   String @default("FREE")
+  subscriptionStatus   String  @default("TRIAL")
+  subscriptionPlan     String  @default("FREE")
+  subscriptionInterval String? // MONTHLY | QUARTERLY | ANNUALLY, set once a paid Paystack plan is active
+
+  // Paystack subscription billing (see src/lib/paystack.ts)
+  billingEmail             String?
+  paystackCustomerCode     String?   @unique
+  paystackSubscriptionCode String?
+  paystackPlanCode         String?
+  nextBillingDate          DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
