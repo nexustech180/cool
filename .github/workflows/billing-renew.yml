@@ -1,0 +1,16 @@
+name: Auto-renew subscriptions
+
+on:
+  schedule:
+    # Runs daily at 07:00 UTC
+    - cron: "0 7 * * *"
+  workflow_dispatch: # allow manual trigger from GitHub UI
+
+jobs:
+  renew:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call renewal endpoint
+        run: |
+          curl -sf -X GET "${{ secrets.APP_URL }}/api/billing/renew" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
