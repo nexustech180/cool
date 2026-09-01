@@ -6,24 +6,32 @@ import { Card, CardHeader, CardBody } from "@/components/ui/Card";
 import { Badge, feeStatusTone } from "@/components/ui/Badge";
 import { TermPicker } from "@/components/TermPicker";
 import { getFeeStatus } from "@/lib/grading";
+import { PayNowForm } from "./PayNowForm";
 
 export default async function ParentFeesPage({
   params,
   searchParams,
 }: {
   params: Promise<{ studentId: string }>;
-  searchParams: Promise<{ termId?: string }>;
+  searchParams: Promise<{ termId?: string; ref?: string }>;
 }) {
   const user = await requireRole("PARENT");
   const schoolId = user.schoolId!;
   const { studentId } = await params;
-  const { termId: termIdParam } = await searchParams;
+  const { termId: termIdParam, ref } = await searchParams;
 
   const student = await prisma.student.findFirst({
     where: { id: studentId, schoolId, parentId: user.id },
     include: { class: true },
   });
   if (!student) notFound();
+
+  // Show payment result banner after returning from Paystack callback
+  let paymentBanner: "success" | "pending" | null = null;
+  if (ref) {
+    const payment = await prisma.payment.findUnique({ where: { paystackRef: ref } });
+    if (payment) paymentBanner = payment.status === "success" ? "success" : "pending";
+  }
 
   const header = (
     <div className="flex items-center justify-between">
@@ -67,6 +75,17 @@ export default async function ParentFeesPage({
     <div className="flex flex-col gap-6">
       {header}
 
+      {paymentBanner === "success" && (
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          Payment received — thank you! Your balance will update shortly if not already reflected.
+        </div>
+      )}
+      {paymentBanner === "pending" && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Payment is being processed. Your balance will update once confirmed.
+        </div>
+      )}
+
       {terms.length > 1 && (
         <Card>
           <CardBody>
@@ -85,15 +104,15 @@ export default async function ParentFeesPage({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div className="rounded-lg border border-slate-200 p-4">
                   <p className="text-xs font-medium uppercase text-slate-500">Amount due</p>
-                  <p className="mt-1 text-2xl font-bold text-slate-900">{fee.amountDue.toLocaleString()}</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-900">₦{fee.amountDue.toLocaleString()}</p>
                 </div>
                 <div className="rounded-lg border border-slate-200 p-4">
                   <p className="text-xs font-medium uppercase text-slate-500">Amount paid</p>
-                  <p className="mt-1 text-2xl font-bold text-slate-900">{fee.amountPaid.toLocaleString()}</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-900">₦{fee.amountPaid.toLocaleString()}</p>
                 </div>
                 <div className="rounded-lg border border-slate-200 p-4">
                   <p className="text-xs font-medium uppercase text-slate-500">Balance</p>
-                  <p className="mt-1 text-2xl font-bold text-slate-900">{balance!.toLocaleString()}</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-900">₦{balance!.toLocaleString()}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -105,6 +124,7 @@ export default async function ParentFeesPage({
                   </span>
                 )}
               </div>
+              {balance! > 0 && <PayNowForm feeId={fee.id} balance={balance!} />}
             </div>
           )}
         </CardBody>

@@ -77,6 +77,11 @@ npm run db:reset  # drop, recreate, and re-migrate the dev database
    - `AUTH_SECRET` — generate with `openssl rand -base64 32`.
    - `AUTH_TRUST_HOST` — set to `true` (required for auth to work behind
      any production host/proxy, Vercel included).
+   - `PAYSTACK_SECRET_KEY` — your Paystack secret key from the
+     [Paystack dashboard](https://dashboard.paystack.com/#/settings/developers).
+     Use `sk_test_...` for staging and `sk_live_...` for production.
+     Also configure your Paystack webhook URL in the dashboard:
+     `https://<your-domain>/api/paystack/webhook`.
 4. Deploy. The build runs `prisma migrate deploy` and the seed script
    automatically, so the schema and demo logins are ready as soon as the
    deploy finishes.
