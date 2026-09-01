@@ -19,6 +19,7 @@ export default async function SchoolAdminLayout({ children }: { children: React.
           { href: "/school-admin/terms", label: "Terms" },
           { href: "/school-admin/grading", label: "Grading" },
           { href: "/school-admin/staff", label: "Staff" },
+          { href: "/school-admin/billing", label: "Billing" },
         ]}
       />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
