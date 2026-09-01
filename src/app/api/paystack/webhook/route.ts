@@ -3,11 +3,16 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyTransaction } from "@/lib/paystack";
 
+// 90 days — one school term
+const SUBSCRIPTION_DURATION_MS = 90 * 24 * 60 * 60 * 1000;
+
 type PaystackEvent = {
   event: string;
   data: {
     reference: string;
     metadata?: { type?: string };
+    authorization?: { authorization_code: string; reusable: boolean };
+    customer?: { email: string };
   };
 };
 
@@ -31,7 +36,7 @@ export async function POST(req: NextRequest) {
   if (event.event === "charge.success") {
     const type = event.data.metadata?.type;
     if (type === "subscription") {
-      await handleSubscriptionPayment(event.data.reference);
+      await handleSubscriptionPayment(event.data);
     } else {
       await handleFeePayment(event.data.reference);
     }
@@ -63,12 +68,21 @@ async function handleFeePayment(reference: string) {
   });
 }
 
-async function handleSubscriptionPayment(reference: string) {
+async function handleSubscriptionPayment(data: PaystackEvent["data"]) {
+  const { reference, authorization, customer } = data;
+
   const schoolPayment = await prisma.schoolPayment.findUnique({ where: { paystackRef: reference } });
   if (!schoolPayment || schoolPayment.status === "success") return;
 
   const txn = await verifyTransaction(reference);
   if (txn.status !== "success") return;
+
+  const expiresAt = new Date(Date.now() + SUBSCRIPTION_DURATION_MS);
+
+  // Store the authorization code only if Paystack marks it as reusable
+  const authCode =
+    authorization?.reusable ? authorization.authorization_code : undefined;
+  const customerEmail = customer?.email;
 
   await prisma.$transaction(async (tx: typeof prisma) => {
     const updated = await tx.schoolPayment.updateMany({
@@ -82,6 +96,9 @@ async function handleSubscriptionPayment(reference: string) {
       data: {
         subscriptionPlan: schoolPayment.plan,
         subscriptionStatus: "ACTIVE",
+        subscriptionExpiresAt: expiresAt,
+        ...(authCode && { paystackAuthCode: authCode }),
+        ...(customerEmail && { paystackCustomerEmail: customerEmail }),
       },
     });
   });

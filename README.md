@@ -82,6 +82,9 @@ npm run db:reset  # drop, recreate, and re-migrate the dev database
      Use `sk_test_...` for staging and `sk_live_...` for production.
      Also configure your Paystack webhook URL in the dashboard:
      `https://<your-domain>/api/paystack/webhook`.
+   - `CRON_SECRET` — generate with `openssl rand -base64 32`. Used to
+     authenticate the daily auto-renewal cron job (`/api/billing/renew`).
+     Add the same value in Vercel under Settings → Environment Variables.
 4. Deploy. The build runs `prisma migrate deploy` and the seed script
    automatically, so the schema and demo logins are ready as soon as the
    deploy finishes.

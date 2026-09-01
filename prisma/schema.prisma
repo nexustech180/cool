@@ -20,6 +20,11 @@ model School {
   subscriptionStatus String @default("TRIAL")
   subscriptionPlan   String @default("FREE")
 
+  // Stored after first Paystack payment — used for automatic renewal charges.
+  paystackAuthCode      String?
+  paystackCustomerEmail String?
+  subscriptionExpiresAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

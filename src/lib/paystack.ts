@@ -37,6 +37,37 @@ export async function initializeTransaction(opts: {
   return json.data;
 }
 
+export async function chargeAuthorization(opts: {
+  authorizationCode: string;
+  email: string;
+  amountNaira: number;
+  reference: string;
+  metadata: Record<string, unknown>;
+}): Promise<{ status: string; reference: string }> {
+  const res = await fetch(`${PAYSTACK_BASE}/transaction/charge_authorization`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      authorization_code: opts.authorizationCode,
+      email: opts.email,
+      amount: Math.round(opts.amountNaira * 100), // kobo
+      reference: opts.reference,
+      metadata: opts.metadata,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Paystack charge_authorization error: ${res.status}`);
+  }
+
+  const json = (await res.json()) as { status: boolean; message: string; data: { status: string; reference: string } };
+  if (!json.status) throw new Error(json.message ?? "Paystack charge_authorization failed");
+  return json.data;
+}
+
 export async function verifyTransaction(reference: string): Promise<{
   status: string;
   amount: number; // kobo
